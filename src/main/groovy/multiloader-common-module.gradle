@@ -1,0 +1,43 @@
+plugins {
+    id 'multiloader-common'
+    id 'net.neoforged.moddev'
+}
+
+neoForge {
+    neoFormVersion = project.property("neo_form_version")
+    def at = file("src/main/resources/META-INF/accesstransformer.cfg")
+    if (at.exists()) {
+        accessTransformers.add(at.absolutePath)
+    }
+    parchment {
+        minecraftVersion = project.property("parchment_minecraft")
+        mappingsVersion = project.property("parchment_version")
+    }
+}
+
+dependencies {
+    compileOnly "org.spongepowered:mixin:0.8.5"
+    compileOnly "io.github.llamalad7:mixinextras-common:0.3.5"
+    annotationProcessor "io.github.llamalad7:mixinextras-common:0.3.5"
+    implementation "org.jetbrains.kotlin:kotlin-reflect"
+}
+
+tasks.named('test') {
+    useJUnitPlatform()
+}
+
+configurations {
+    create("commonJava") {
+        canBeResolved = false
+        canBeConsumed = true
+    }
+    create("commonResources") {
+        canBeResolved = false
+        canBeConsumed = true
+    }
+}
+
+artifacts {
+    add("commonJava", sourceSets.main.java.sourceDirectories.singleFile)
+    add("commonResources", sourceSets.main.resources.sourceDirectories.singleFile)
+}
