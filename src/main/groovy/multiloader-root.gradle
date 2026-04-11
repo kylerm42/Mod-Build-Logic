@@ -1,0 +1,31 @@
+repositories {
+    mavenCentral()
+}
+
+subprojects {
+    apply plugin: 'org.jetbrains.kotlin.jvm'
+    apply plugin: 'org.jetbrains.kotlin.plugin.serialization'
+
+    dependencies {
+        implementation "org.jetbrains.kotlinx:kotlinx-serialization-json:1.7.3"
+        implementation "org.jetbrains.kotlin:kotlin-reflect"
+    }
+
+    if (path != ":common") {
+        tasks.withType(JavaCompile).configureEach {
+            source(project(":common").sourceSets.main.get().allSource)
+        }
+
+        tasks.withType(Javadoc).configureEach {
+            enabled = false
+        }
+
+        tasks.named("compileTestJava") {
+            enabled = false
+        }
+
+        tasks.withType(ProcessResources).configureEach {
+            from(project(":common").sourceSets.main.get().resources)
+        }
+    }
+}
