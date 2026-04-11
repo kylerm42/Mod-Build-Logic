@@ -13,7 +13,7 @@ subprojects {
 
     if (path != ":common") {
         tasks.withType(JavaCompile).configureEach {
-            source(project(":common").sourceSets.main.get().allSource)
+            source(project(":common").sourceSets.main.allSource)
         }
 
         tasks.withType(Javadoc).configureEach {
@@ -25,7 +25,7 @@ subprojects {
         }
 
         tasks.withType(ProcessResources).configureEach {
-            from(project(":common").sourceSets.main.get().resources)
+            from(project(":common").sourceSets.main.resources)
         }
     }
 }
