@@ -16,9 +16,9 @@ neoForge {
 }
 
 dependencies {
-    compileOnly "org.spongepowered:mixin:0.8.5"
-    compileOnly "io.github.llamalad7:mixinextras-common:0.3.5"
-    annotationProcessor "io.github.llamalad7:mixinextras-common:0.3.5"
+    compileOnly "org.spongepowered:mixin:${project.property('mixin_version')}"
+    compileOnly "io.github.llamalad7:mixinextras-common:${project.property('mixin_extras_version')}"
+    annotationProcessor "io.github.llamalad7:mixinextras-common:${project.property('mixin_extras_version')}"
     implementation "org.jetbrains.kotlin:kotlin-reflect"
 }
 

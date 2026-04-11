@@ -1,0 +1,11 @@
+gradle.projectsLoaded { gradle ->
+    def platformProps = new Properties()
+    gradle.rootProject.file('build-logic/platform.properties').withInputStream { platformProps.load(it) }
+    gradle.rootProject.allprojects {
+        platformProps.each { k, v ->
+            if (!hasProperty(k as String)) {
+                ext[k as String] = v as String
+            }
+        }
+    }
+}
