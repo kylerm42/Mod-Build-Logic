@@ -14,28 +14,22 @@ configurations {
 }
 
 dependencies {
-    compileOnly(project(':common')) {
-        capabilities {
-            requireCapability "$group:$mod_id"
-        }
-    }
+    compileOnly(project(':common'))
     commonJava project(path: ':common', configuration: 'commonJava')
     commonResources project(path: ':common', configuration: 'commonResources')
 }
 
 tasks.named('compileJava', JavaCompile) {
-//    dependsOn(configurations.commonJava)
-//    source(configurations.commonJava)
+    dependsOn(configurations.commonJava)
+    source(configurations.commonJava)
+    // Gradle 9: javac fails hard with "no source files" on pure-Kotlin projects.
+    // Skip when there are no .java files to compile.
+    onlyIf { !source.filter { it.name.endsWith('.java') }.empty }
 }
 
 processResources {
     dependsOn(configurations.commonResources)
     from(configurations.commonResources)
-    duplicatesStrategy(DuplicatesStrategy.WARN)
-}
-
-compileKotlin {
-    source(project(":common").sourceSets.main.allSource)
 }
 
 tasks.named('javadoc', Javadoc).configure {

@@ -3,8 +3,17 @@ plugins {
     id 'maven-publish'
 }
 
+if (project.version.toString().endsWith("SNAPSHOT")) {
+    if (project.hasProperty("snapshot_build")) {
+        project.version = "${project.version}.${project.property("snapshot_build")}"
+    } else {
+        def stamp = new Date().format("yyyyMMdd-HHmm", TimeZone.getTimeZone("UTC"))
+        project.version = "${project.version}.${stamp}"
+    }
+}
+
 base {
-    archivesName = "${mod_id}-${project.name}"
+    archivesName = "${mod_id}-${project.name}-${minecraft_version}"
 }
 
 java {
@@ -48,9 +57,11 @@ repositories {
 // Read more about capabilities here: https://docs.gradle.org/current/userguide/component_capabilities.html#sec:declaring-additional-capabilities-for-a-local-component
 ['apiElements', 'runtimeElements', 'sourcesElements', 'javadocElements'].each { variant ->
     configurations.getByName(variant).outgoing {
+        // Gradle 9 drops the implicit default capability as soon as any explicit capability is declared,
+        // so re-add it here — project(':common') consumers depend on it to resolve these variants.
+        capability("$group:${project.name}:$version")
         capability("$group:${base.archivesName.get()}:$version")
-        capability("$group:$mod_id-${project.name}-${minecraft_version}:$version")
-        capability("$group:$mod_id:$version")
+        // Removed mod_id capabilities to avoid cross-artifact conflicts.
     }
     publishing.publications.configureEach {
         suppressPomMetadataWarningsFor(variant)
@@ -83,34 +94,45 @@ jar {
 
 processResources {
     var expandProps = [
-            'version'                         : version,
-            'group'                           : project.group,
-            'minecraft_version'               : minecraft_version,
-            'minecraft_version_range'         : minecraft_version_range,
-            'fabric_version'                  : fabric_version,
-            'fabric_loader_version'           : fabric_loader_version,
-            'mod_name'                        : mod_name,
-            'mod_author'                      : mod_author,
-            'mod_id'                          : mod_id,
-            'license'                         : license,
-            'description'                     : project.description,
-            'neoforge_version'                : neoforge_version,
-            'neoforge_loader_version_range'   : neoforge_loader_version_range,
-            'forge_version'                   : forge_version,
-            'forge_loader_version_range'      : forge_loader_version_range,
-            'credits'                         : credits,
-            'java_version'                    : java_version,
-            'forgelike_adapter_version_range' : forgelike_adapter_version_range
+            'version'                      : version,
+            'group'                        : project.group,
+            'minecraft_version'            : minecraft_version,
+            'minecraft_version_range'      : minecraft_version_range,
+            'fabric_version'               : fabric_version,
+            'fabric_loader_version'        : fabric_loader_version,
+            'mod_name'                     : mod_name,
+            'mod_author'                   : mod_author,
+            'mod_id'                       : mod_id,
+            'license'                      : license,
+            'description'                  : project.description,
+            'neoforge_version'             : neoforge_version,
+            'neoforge_loader_version_range': neoforge_loader_version_range,
+            'forgelike_adapter_version'          : forgelike_adapter_version,
+            'forgelike_adapter_version_range'    : forgelike_adapter_version_range,
+            'credits'                      : credits,
+            'java_version'                 : java_version
     ]
 
     // Optional properties that only some projects define
     if (project.hasProperty('kambrik_version')) {
         expandProps['kambrik_version'] = kambrik_version
     }
+    if (project.hasProperty('percale_version')) {
+        expandProps['percale_version'] = percale_version
+    }
 
-    filesMatching(['pack.mcmeta', 'fabric.mod.json', 'META-INF/mods.toml', 'META-INF/neoforge.mods.toml', '*.mixins.json']) {
+    var jsonExpandProps = expandProps.collectEntries {
+        key, value -> [(key): value instanceof String ? value.replace("\n", "\\\\n") : value]
+    }
+
+    filesMatching(['META-INF/mods.toml', 'META-INF/neoforge.mods.toml']) {
         expand expandProps
     }
+
+    filesMatching(['pack.mcmeta', 'fabric.mod.json', '*.mixins.json']) {
+        expand jsonExpandProps
+    }
+
     inputs.properties(expandProps)
 }
 

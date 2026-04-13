@@ -7,6 +7,81 @@ repositories {
     mavenCentral()
 }
 
+def isTopLevelRoot = gradle.parent == null
+def kambrikDir = rootProject.file('../Kambrik')
+def percaleDir = rootProject.file('../Percale')
+
+if (isTopLevelRoot) {
+    def bundleDir = rootProject.layout.buildDirectory.dir("bundle/mods")
+    def gradleWrapper = org.gradle.internal.os.OperatingSystem.current().isWindows() ? "gradlew.bat" : "./gradlew"
+
+    def buildPercaleBundle = tasks.register("buildPercaleBundle", Exec) {
+        onlyIf { percaleDir.exists() }
+        workingDir = percaleDir
+        commandLine = [
+            gradleWrapper,
+            ":common:build",
+            ":fabric:jar",
+            ":fabric:remapJar",
+            "-x", ":fabric:compileJava",
+            ":neoforge:build",
+            "-x", ":neoforge:compileJava"
+        ]
+    }
+
+    def buildKambrikBundle = tasks.register("buildKambrikBundle", Exec) {
+        onlyIf { kambrikDir.exists() }
+        workingDir = kambrikDir
+        commandLine = [gradleWrapper, "clean", "build"]
+    }
+
+    def buildBountifulBundle = tasks.register("buildBountifulBundle") {
+        dependsOn("clean", "build")
+    }
+
+    tasks.register("buildModBundle") {
+        group = "build"
+        description = "Builds Bountiful and its local library mods for release bundling."
+        dependsOn(buildPercaleBundle, buildKambrikBundle, buildBountifulBundle)
+    }
+
+    tasks.register("bundleModJars", Copy) {
+        group = "build"
+        description = "Builds Bountiful, Kambrik, and Percale and copies their release jars into one folder."
+        dependsOn("buildModBundle")
+        into(bundleDir)
+
+        from(rootProject.file("fabric/build/libs")) {
+            include("*.jar")
+            exclude("*-sources.jar", "*-javadoc.jar")
+        }
+        from(rootProject.file("neoforge/build/libs")) {
+            include("*.jar")
+            exclude("*-sources.jar", "*-javadoc.jar")
+        }
+        if (kambrikDir.exists()) {
+            from(new File(kambrikDir, "fabric/build/libs")) {
+                include("*.jar")
+                exclude("*-sources.jar", "*-javadoc.jar")
+            }
+            from(new File(kambrikDir, "neoforge/build/libs")) {
+                include("*.jar")
+                exclude("*-sources.jar", "*-javadoc.jar")
+            }
+        }
+        if (percaleDir.exists()) {
+            from(new File(percaleDir, "fabric/build/libs")) {
+                include("*.jar")
+                exclude("*-sources.jar", "*-javadoc.jar")
+            }
+            from(new File(percaleDir, "neoforge/build/libs")) {
+                include("*.jar")
+                exclude("*-sources.jar", "*-javadoc.jar")
+            }
+        }
+    }
+}
+
 subprojects {
     apply plugin: 'org.jetbrains.kotlin.jvm'
     apply plugin: 'org.jetbrains.kotlin.plugin.serialization'
@@ -16,10 +91,22 @@ subprojects {
         implementation "org.jetbrains.kotlin:kotlin-reflect"
     }
 
-    if (path != ":common") {
-        tasks.withType(JavaCompile).configureEach {
-            source(project(":common").sourceSets.main.allSource)
+    kotlin {
+        compilerOptions {
+            freeCompilerArgs.addAll([
+                '-opt-in=kotlinx.serialization.ExperimentalSerializationApi',
+                '-opt-in=kotlinx.serialization.InternalSerializationApi',
+                '-opt-in=kotlinx.serialization.SealedSerializationApi'
+            ])
         }
+    }
+
+    if (path != ":common") {
+        // NOTE: JavaCompile sources and ProcessResources inputs from :common are already wired up
+        // in multiloader-loader.gradle via the `commonJava`/`commonResources` exposed configurations
+        // and the compileKotlin source() call. Adding them again here caused Gradle 9 to fail with
+        // duplicate-file errors (processResources) and "no source files" errors (compileJava on
+        // pure-Kotlin projects where javac gets invoked with an empty file list).
 
         tasks.withType(Javadoc).configureEach {
             enabled = false
@@ -28,9 +115,12 @@ subprojects {
         tasks.named("compileTestJava") {
             enabled = false
         }
-
-        tasks.withType(ProcessResources).configureEach {
-            from(project(":common").sourceSets.main.resources)
-        }
     }
+}
+
+tasks.register("runAllGameTestServers") {
+    group = "verification"
+    description = "Runs Fabric then NeoForge GameTest servers for the current project."
+    dependsOn(":fabric:runGameTestServer")
+    dependsOn(":neoforge:runGameTestServer")
 }

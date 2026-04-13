@@ -18,11 +18,15 @@ neoForge {
     version = neoforge_version
     def at = project(':common').file('src/main/resources/META-INF/accesstransformer.cfg')
     if (at.exists()) {
-        accessTransformers.add(at.absolutePath)
+        accessTransformers.from(at)
     }
-    parchment {
-        minecraftVersion = parchment_minecraft
-        mappingsVersion = parchment_version
+    if (project.hasProperty("parchment_minecraft") && project.hasProperty("parchment_version")
+            && project.property("parchment_minecraft").toString()
+            && project.property("parchment_version").toString()) {
+        parchment {
+            minecraftVersion = parchment_minecraft
+            mappingsVersion = parchment_version
+        }
     }
     runs {
         configureEach {
@@ -30,7 +34,8 @@ neoForge {
             ideName = "NeoForge ${it.name.capitalize()} (${project.path})"
         }
         client { client() }
-        data { data() }
+        clientData { clientData() }
+        serverData { serverData() }
         server { server() }
     }
     mods {
@@ -41,3 +46,7 @@ neoForge {
 }
 
 sourceSets.main.resources { srcDir 'src/generated/resources' }
+
+compileKotlin {
+    source(project(":common").sourceSets.main.allSource)
+}

@@ -2,9 +2,9 @@ plugins {
     `groovy-gradle-plugin`
 }
 
-val kotlinVersion = "2.0.21"
-val fabricLoomVersion = "1.9-SNAPSHOT"
-val neoForgeModdevVersion = "0.1.110"
+val kotlinVersion = "2.3.20"
+val fabricLoomVersion = "1.16-SNAPSHOT"
+val neoForgeModdevVersion = "2.0.141"
 
 dependencies {
     implementation("net.fabricmc:fabric-loom:$fabricLoomVersion")

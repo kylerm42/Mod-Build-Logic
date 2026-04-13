@@ -1,7 +1,8 @@
 plugins {
     id 'multiloader-loader'
-    id 'fabric-loom'
+    id 'net.fabricmc.fabric-loom'
 }
+
 
 repositories {
     maven {
@@ -12,16 +13,21 @@ repositories {
 
 dependencies {
     minecraft "com.mojang:minecraft:${minecraft_version}"
-    mappings loom.layered {
-        officialMojangMappings()
-        parchment("org.parchmentmc.data:parchment-${parchment_minecraft}:${parchment_version}@zip")
-    }
-    modImplementation "net.fabricmc:fabric-loader:${fabric_loader_version}"
-    modImplementation "net.fabricmc.fabric-api:fabric-api:${fabric_version}"
-    modImplementation "net.fabricmc:fabric-language-kotlin:1.12.3+kotlin.2.0.21"
+    implementation "net.fabricmc:fabric-loader:${fabric_loader_version}"
+    implementation "net.fabricmc.fabric-api:fabric-api:${fabric_version}"
+    implementation "net.fabricmc:fabric-language-kotlin:${fabric_language_kotlin_version}"
+}
+
+// Loom 1.16.x no longer exposes modImplementation configs here, but it does
+// provide modCompileClasspath. Ensure it inherits the main deps so Fabric API
+// is visible to the mod loader in dev runs.
+configurations.matching { it.name == "modCompileClasspath" }.all {
+    extendsFrom(configurations.implementation)
 }
 
 loom {
+    splitEnvironmentSourceSets()
+
     def aw = project(':common').file("src/main/resources/${mod_id}.accesswidener")
     if (aw.exists()) {
         accessWidenerPath.set(aw)
@@ -42,5 +48,13 @@ loom {
             ideConfigGenerated(true)
             runDir('runs/server')
         }
+    }
+}
+
+// Common sources are compiled as part of the client source set, which has full MC+FAPI on its
+// classpath (including client-only classes). The main source set only sees common via compileOnly.
+afterEvaluate {
+    tasks.named('compileClientKotlin') {
+        source(project(":common").sourceSets.main.allSource)
     }
 }

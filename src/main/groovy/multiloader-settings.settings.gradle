@@ -1,10 +1,44 @@
 gradle.projectsLoaded { gradle ->
     def platformProps = new Properties()
-    gradle.rootProject.file('build-logic/platform.properties').withInputStream { platformProps.load(it) }
+    def platformPropsFile = [
+        gradle.rootProject.file('build-logic/platform.properties'),
+        gradle.rootProject.file('../build-logic/platform.properties')
+    ].find { it.exists() }
+
+    if (platformPropsFile == null) {
+        throw new GradleException("Could not find build-logic/platform.properties for ${gradle.rootProject.rootDir}")
+    }
+
+    platformPropsFile.withInputStream { platformProps.load(it) }
     gradle.rootProject.allprojects {
         platformProps.each { k, v ->
             if (!hasProperty(k as String)) {
                 ext[k as String] = v as String
+            }
+        }
+    }
+}
+
+def loaderAttribute = org.gradle.api.attributes.Attribute.of('io.github.mcgradleconventions.loader', String)
+
+class LoaderCompatibilityRule implements org.gradle.api.attributes.AttributeCompatibilityRule<String> {
+    @Override
+    void execute(org.gradle.api.attributes.CompatibilityCheckDetails<String> details) {
+        if (details.consumerValue == details.producerValue) {
+            details.compatible()
+            return
+        }
+        if (details.producerValue == 'common') {
+            details.compatible()
+        }
+    }
+}
+
+gradle.rootProject {
+    allprojects {
+        dependencies.attributesSchema {
+            attribute(loaderAttribute) {
+                compatibilityRules.add(LoaderCompatibilityRule)
             }
         }
     }
