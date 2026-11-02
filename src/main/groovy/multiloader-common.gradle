@@ -114,7 +114,7 @@ processResources {
 publishing {
     publications {
         register('mavenJava', MavenPublication) {
-            // Consumers depend on e.g. percale-fabric-26.1.2, so the MC version is part of the artifactId
+            // Consumers depend on e.g. percale-fabric-26.3, so the MC version is part of the artifactId
             artifactId "${base.archivesName.get()}-${minecraft_version}"
             from components.java
         }
