@@ -18,6 +18,19 @@ dependencies {
     implementation "net.fabricmc:fabric-language-kotlin:${fabric_language_kotlin_version}"
 }
 
+// Client-only sources/resources of the loader module (`src/client/{java,resources}`, referenced by the
+// "client" entrypoints in fabric.mod.json) are compiled into the *main* source set and thus packaged in the
+// mod jar. A Loom split environment (`splitEnvironmentSourceSets()`) is deliberately not used: the shared
+// `:common` sources are compiled into this module's main source set and reference net.minecraft.client.*,
+// which a split main source set (server-side classpath) cannot see. Client classes are only ever loaded
+// through the "client" entrypoint, so they do not affect dedicated server startup.
+['java', 'resources'].each { kind ->
+    def dir = file("src/client/${kind}")
+    if (dir.exists()) {
+        sourceSets.main."${kind}".srcDir(dir)
+    }
+}
+
 loom {
     def aw = project(':common').file("src/main/resources/${mod_id}.accesswidener")
     if (aw.exists()) {
