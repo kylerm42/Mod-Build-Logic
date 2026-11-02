@@ -3,6 +3,12 @@ plugins {
     id 'maven-publish'
 }
 
+// Snapshot builds are published with a numeric suffix (e.g. 2.0.0-SNAPSHOT -> 2.0.0-SNAPSHOT.1) so that
+// mavenLocal consumers can depend on an immutable-looking version ("percale_version=2.0.0-SNAPSHOT.1").
+if (project.hasProperty('snapshot_build') && project.version.toString().endsWith('-SNAPSHOT')) {
+    project.version = "${project.version}.${project.property('snapshot_build')}".toString()
+}
+
 base {
     archivesName = "${mod_id}-${project.name}"
 }
@@ -25,19 +31,6 @@ repositories {
         }
         filter { includeGroupAndSubgroups('org.spongepowered') }
     }
-    exclusiveContent {
-        forRepositories(
-                maven {
-                    name = 'ParchmentMC'
-                    url = 'https://maven.parchmentmc.org/'
-                },
-                maven {
-                    name = "NeoForge"
-                    url = 'https://maven.neoforged.net/releases'
-                }
-        )
-        filter { includeGroup('org.parchmentmc.data') }
-    }
     maven {
         name = 'BlameJared'
         url = 'https://maven.blamejared.com'
@@ -50,7 +43,9 @@ repositories {
     configurations.getByName(variant).outgoing {
         capability("$group:${base.archivesName.get()}:$version")
         capability("$group:$mod_id-${project.name}-${minecraft_version}:$version")
-        capability("$group:$mod_id:$version")
+        // The shared "$group:$mod_id" capability is declared only by the :common module (see
+        // multiloader-common-module), otherwise a consumer depending on both a library's common and
+        // loader artifacts hits a capability conflict.
     }
     publishing.publications.configureEach {
         suppressPomMetadataWarningsFor(variant)
@@ -104,8 +99,10 @@ processResources {
     ]
 
     // Optional properties that only some projects define
-    if (project.hasProperty('kambrik_version')) {
-        expandProps['kambrik_version'] = kambrik_version
+    ['kambrik_version', 'percale_version', 'cloth_config_version'].each { name ->
+        if (project.hasProperty(name)) {
+            expandProps[name] = project.property(name)
+        }
     }
 
     filesMatching(['pack.mcmeta', 'fabric.mod.json', 'META-INF/mods.toml', 'META-INF/neoforge.mods.toml', '*.mixins.json']) {
@@ -117,7 +114,8 @@ processResources {
 publishing {
     publications {
         register('mavenJava', MavenPublication) {
-            artifactId base.archivesName.get()
+            // Consumers depend on e.g. percale-fabric-26.1.2, so the MC version is part of the artifactId
+            artifactId "${base.archivesName.get()}-${minecraft_version}"
             from components.java
         }
     }

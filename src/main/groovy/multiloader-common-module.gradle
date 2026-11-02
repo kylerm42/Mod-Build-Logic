@@ -7,11 +7,7 @@ neoForge {
     neoFormVersion = project.property("neo_form_version")
     def at = file("src/main/resources/META-INF/accesstransformer.cfg")
     if (at.exists()) {
-        accessTransformers.add(at.absolutePath)
-    }
-    parchment {
-        minecraftVersion = project.property("parchment_minecraft")
-        mappingsVersion = project.property("parchment_version")
+        accessTransformers.from(at.absolutePath)
     }
 }
 
@@ -34,6 +30,12 @@ configurations {
     create("commonResources") {
         canBeResolved = false
         canBeConsumed = true
+    }
+}
+
+['apiElements', 'runtimeElements', 'sourcesElements', 'javadocElements'].each { variant ->
+    configurations.getByName(variant).outgoing {
+        capability("$group:$mod_id:$version")
     }
 }
 

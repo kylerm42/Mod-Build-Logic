@@ -1,6 +1,16 @@
 gradle.projectsLoaded { gradle ->
+    // platform.properties lives in the build-logic checkout: either a submodule at
+    // <root>/build-logic or a sibling directory at <root>/../build-logic.
+    def candidates = [
+        gradle.rootProject.file('build-logic/platform.properties'),
+        gradle.rootProject.file('../build-logic/platform.properties')
+    ]
+    def platformFile = candidates.find { it.exists() }
+    if (platformFile == null) {
+        throw new GradleException("platform.properties not found. Looked in: ${candidates*.absolutePath}")
+    }
     def platformProps = new Properties()
-    gradle.rootProject.file('build-logic/platform.properties').withInputStream { platformProps.load(it) }
+    platformFile.withInputStream { platformProps.load(it) }
     gradle.rootProject.allprojects {
         platformProps.each { k, v ->
             if (!hasProperty(k as String)) {

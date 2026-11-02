@@ -11,6 +11,14 @@ subprojects {
     apply plugin: 'org.jetbrains.kotlin.jvm'
     apply plugin: 'org.jetbrains.kotlin.plugin.serialization'
 
+    // kotlinx.serialization >= 1.9 requires opt-in to implement SerialDescriptor (used by Percale's
+    // deferred descriptors). Enable it build-wide rather than editing upstream sources.
+    kotlin {
+        compilerOptions {
+            optIn.add('kotlinx.serialization.SealedSerializationApi')
+        }
+    }
+
     dependencies {
         implementation "org.jetbrains.kotlinx:kotlinx-serialization-json:${project.property('kotlinx_serialization_version')}"
         implementation "org.jetbrains.kotlin:kotlin-reflect"
@@ -18,7 +26,9 @@ subprojects {
 
     if (path != ":common") {
         tasks.withType(JavaCompile).configureEach {
-            source(project(":common").sourceSets.main.allSource)
+            // Only .java files: passing allSource (kt/resources) leaves javac with "no source files"
+            // for modules that have no Java sources (e.g. Percale).
+            source(project(":common").sourceSets.main.java)
         }
 
         tasks.withType(Javadoc).configureEach {
